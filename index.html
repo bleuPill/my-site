@@ -187,6 +187,7 @@
   .blog-bar input[type="text"]:focus{border-color:var(--fg)}
   .blog-bar label{cursor:crosshair;color:var(--muted);font-size:10px;letter-spacing:.1em;white-space:nowrap;transition:color .15s}
   .blog-bar label:hover{color:var(--fg)}
+  #photo-ready{font-size:10px;letter-spacing:.1em;color:var(--muted);white-space:nowrap;display:none}
 
   /* MODAL */
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);z-index:100;align-items:center;justify-content:center}
@@ -350,7 +351,8 @@
   <p class="page-sub">bad photos. no editing. no curation. scroll sideways.</p>
   <div class="film-strip" id="fstrip"></div>
   <div class="blog-bar">
-    <label for="bfile">+ photo</label>
+    <label for="bfile" id="photo-label">+ photo</label>
+    <span id="photo-ready">— loaded</span>
     <input type="file" id="bfile" accept="image/*" hidden>
     <input type="text" id="bcap" placeholder="caption (optional)">
     <button class="btn" style="padding:8px 18px;font-size:10px" onclick="postPhoto()">post</button>
@@ -879,12 +881,9 @@ async function renderBlog() {
 
 document.getElementById('bfile').addEventListener('change', async function () {
   if (this.files[0]) {
-    const label = document.querySelector('.blog-bar label');
-    const orig = label ? label.textContent : '';
-    if (label) label.textContent = '...';
     window._pi = await compressImage(this.files[0]);
-    if (label) label.textContent = '✓';
-    setTimeout(() => { if (label) label.textContent = orig; }, 1500);
+    document.getElementById('photo-label').style.display = 'none';
+    document.getElementById('photo-ready').style.display = 'inline';
   }
 });
 
@@ -935,6 +934,8 @@ async function postPhoto() {
   document.getElementById('bcap').value = '';
   window._pi = null;
   document.getElementById('bfile').value = '';
+  document.getElementById('photo-label').style.display = 'inline';
+  document.getElementById('photo-ready').style.display = 'none';
   if (btn) btn.textContent = 'post';
   renderBlog();
 }
