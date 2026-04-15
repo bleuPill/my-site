@@ -166,13 +166,11 @@
   .sold-out{font-size:9px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase}
 
   /* BLOG */
-  .film-strip{display:flex;gap:16px;overflow-x:auto;overflow-y:hidden;padding-bottom:20px;scroll-snap-type:x proximity;height:calc(100vh - 310px);align-items:flex-start}
+  .film-strip{display:flex;gap:16px;overflow-x:auto;overflow-y:hidden;padding-bottom:20px;height:calc(100vh - 310px);align-items:flex-start;width:100%;box-sizing:border-box;-ms-overflow-style:none;scrollbar-width:none;cursor:grab;user-select:none}
   .film-strip::-webkit-scrollbar{display:none}
-  .film-strip{-ms-overflow-style:none;scrollbar-width:none}
-  .blog-frame{flex-shrink:0;width:280px;scroll-snap-align:start;cursor:inherit}
-  .film-strip{cursor:grab;user-select:none}
   .film-strip.dragging{cursor:grabbing}
-  .film-strip img{pointer-events:none;draggable:false}
+  .blog-frame{flex-shrink:0;width:280px;cursor:inherit}
+  .film-strip img,.film-strip *{pointer-events:none;user-select:none}
   .blog-img-wrap{width:100%;background:#e8e6e1;position:relative;overflow:hidden;border:1px solid #e0e0e0}
   .blog-img-wrap img{width:100%;height:100%;object-fit:cover;filter:grayscale(30%) contrast(1.05) brightness(.98);transition:filter .4s}
   .blog-frame:hover img{filter:grayscale(0%) contrast(1) brightness(1)}
@@ -785,24 +783,26 @@ let posts = [
 ];
 
 // ── BLOG DRAG SCROLL
-(function() {
-  let startX, scrollLeft, dragging = false;
-  function el() { return document.getElementById('fstrip'); }
-  document.addEventListener('mousedown', e => {
-    const fs = el(); if (!fs || !fs.contains(e.target)) return;
-    dragging = true; startX = e.pageX; scrollLeft = fs.scrollLeft;
-    fs.classList.add('dragging'); e.preventDefault();
+function initDragScroll() {
+  const fs = document.getElementById('fstrip');
+  if (!fs) return;
+  let startX = 0, startScroll = 0, dragging = false;
+  fs.addEventListener('mousedown', e => {
+    dragging = true;
+    startX = e.clientX;
+    startScroll = fs.scrollLeft;
+    fs.classList.add('dragging');
+    e.preventDefault();
   });
-  document.addEventListener('mousemove', e => {
+  window.addEventListener('mousemove', e => {
     if (!dragging) return;
-    el().scrollLeft = scrollLeft - (e.pageX - startX);
+    fs.scrollLeft = startScroll - (e.clientX - startX);
   });
-  document.addEventListener('mouseup', () => {
-    if (!dragging) return;
-    dragging = false; el().classList.remove('dragging');
+  window.addEventListener('mouseup', () => {
+    dragging = false;
+    fs.classList.remove('dragging');
   });
-  document.addEventListener('dragstart', e => { if (el() && el().contains(e.target)) e.preventDefault(); });
-})();
+}
 
 function renderBlog() {
   const fs = document.getElementById('fstrip');
@@ -814,6 +814,7 @@ function renderBlog() {
       <div class="sprocket"><div class="sprocket-hole"></div><div class="sprocket-hole"></div><div class="sprocket-hole"></div></div>
       ${bg}</div>${p.cap ? `<div class="blog-caption">${p.cap}</div>` : ''}<div class="blog-date">${p.d}</div></div>`;
   }).join('');
+  initDragScroll();
 }
 
 document.getElementById('bfile').addEventListener('change', function () {
