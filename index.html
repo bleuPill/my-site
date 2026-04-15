@@ -230,6 +230,7 @@
 <div id="tracker"></div>
 <div class="wipe" id="wipe"></div>
 <span class="corner tl" id="clock"></span>
+<span class="corner tl" id="logout-btn" onclick="localStorage.removeItem('auth');location.reload()" style="top:34px;cursor:crosshair;color:var(--faint);transition:color .2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--faint)'">forget</span>
 <span class="corner tr" id="visitor-count"></span>
 <span class="corner bl" id="time-spent">00:00</span>
 <span class="corner br">nowhere, internet</span>
