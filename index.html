@@ -200,6 +200,14 @@
   .easter-egg{position:fixed;inset:0;background:var(--fg);color:var(--bg);display:none;align-items:center;justify-content:center;z-index:5000;font-family:var(--serif);font-size:28px;font-style:italic;text-align:center;padding:30px;line-height:1.5;cursor:crosshair}
   .easter-egg.active{display:flex}
 
+  /* PASSWORD GATE */
+  #pw-gate{position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+  #pw-gate input{border:none;border-bottom:1px solid var(--faint);background:transparent;font-family:var(--mono);font-size:13px;letter-spacing:.15em;outline:none;padding:8px 0;text-align:center;width:180px;color:var(--fg);transition:border-color .2s}
+  #pw-gate input:focus{border-color:var(--fg)}
+  #pw-gate input::placeholder{color:var(--faint);letter-spacing:.1em}
+  #pw-gate .pw-err{font-size:10px;color:var(--accent);letter-spacing:.1em;opacity:0;transition:opacity .2s}
+  #pw-gate .pw-err.visible{opacity:1}
+
   @media(max-width:600px){
     .shirt-layout,.print-layout{flex-direction:column;align-items:center}
     .shirt-preview{width:100%;max-width:280px}
@@ -211,6 +219,12 @@
 </style>
 </head>
 <body>
+
+<!-- PASSWORD GATE -->
+<div id="pw-gate">
+  <input id="pw-input" type="password" placeholder="password" autocomplete="off" spellcheck="false">
+  <div class="pw-err" id="pw-err">wrong.</div>
+</div>
 
 <!-- this runs once. we save the result. -->
 <div id="tracker"></div>
@@ -348,6 +362,28 @@
 <div class="easter-egg" id="egg" onclick="this.classList.remove('active')">you found nothing.<br>congratulations.</div>
 
 <script>
+// ── PASSWORD GATE
+(function() {
+  const gate = document.getElementById('pw-gate');
+  const input = document.getElementById('pw-input');
+  const err = document.getElementById('pw-err');
+  if (localStorage.getItem('auth') === '1') { gate.style.display = 'none'; return; }
+  input.focus();
+  input.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    if (input.value === 'bingotown') {
+      localStorage.setItem('auth', '1');
+      gate.style.opacity = '0';
+      gate.style.transition = 'opacity .3s';
+      setTimeout(() => gate.style.display = 'none', 300);
+    } else {
+      input.value = '';
+      err.classList.add('visible');
+      setTimeout(() => err.classList.remove('visible'), 1500);
+    }
+  });
+})();
+
 // ── CONSOLE SURVEILLANCE
 // this runs whether or not you open the console.
 const _msgs = [
