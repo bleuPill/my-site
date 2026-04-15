@@ -810,17 +810,33 @@ function renderStore() {
 function fStore(c) { playClick(); aCat = c; renderStore(); }
 
 // ── BLOG
-let posts = [
-  { s: '', cap: 'parking lot at 6am', d: '2026-04-11', h: 40 },
-  { s: '', cap: 'cat doing nothing', d: '2026-04-09', h: 200 },
-  { s: '', cap: '', d: '2026-04-07', h: 0 },
-  { s: '', cap: 'forgot why i took this', d: '2026-04-03', h: 90 },
-  { s: '', cap: 'blurry', d: '2026-03-28', h: 30 },
-  { s: '', cap: 'idk', d: '2026-03-20', h: 210 },
-  { s: '', cap: 'miata in rain', d: '2026-03-14', h: 170 },
-  { s: '', cap: '', d: '2026-03-08', h: 340 },
-  { s: '', cap: 'ceiling', d: '2026-02-28', h: 55 },
-];
+let posts = [];
+
+async function loadPosts() {
+  try {
+    const res = await fetch('/api/posts');
+    posts = await res.json();
+  } catch(e) { posts = []; }
+}
+
+function compressImage(file) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 900;
+      let w = img.width, h = img.height;
+      if (w > MAX) { h = h * MAX / w; w = MAX; }
+      if (h > MAX) { w = w * MAX / h; h = MAX; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.72));
+    };
+    img.src = url;
+  });
+}
 
 // ── BLOG DRAG SCROLL
 function initDragScroll() {
@@ -845,58 +861,82 @@ function initDragScroll() {
   });
 }
 
-function renderBlog() {
+async function renderBlog() {
+  if (!posts.length) await loadPosts();
   const fs = document.getElementById('fstrip');
-  fs.innerHTML = posts.map((p, i) => {
+  fs.innerHTML = posts.map((p) => {
     const ht = 300 + Math.random() * 100 | 0;
     const bg = p.s ? `<img src="${p.s}" alt="">` :
       `<div class="blog-placeholder" style="background:hsl(${p.h},18%,72%)"></div>`;
-    return `<div class="blog-frame"><div class="blog-img-wrap" style="height:${ht}px">
+    return `<div class="blog-frame" data-id="${p.id}"><div class="blog-img-wrap" style="height:${ht}px">
       <div class="sprocket"><div class="sprocket-hole"></div><div class="sprocket-hole"></div><div class="sprocket-hole"></div></div>
       ${bg}</div>
-      <span class="blog-delete" onclick="promptDeleteBlog(event,${i})">erase</span>
+      <span class="blog-delete" onclick="promptDeleteBlog(event,'${p.id}')">erase</span>
       ${p.cap ? `<div class="blog-caption">${p.cap}</div>` : ''}<div class="blog-date">${p.d}</div></div>`;
   }).join('');
   initDragScroll();
 }
 
-document.getElementById('bfile').addEventListener('change', function () {
-  if (this.files[0]) { const r = new FileReader(); r.onload = e => { window._pi = e.target.result }; r.readAsDataURL(this.files[0]); }
+document.getElementById('bfile').addEventListener('change', async function () {
+  if (this.files[0]) {
+    const label = document.querySelector('.blog-bar label');
+    const orig = label ? label.textContent : '';
+    if (label) label.textContent = '...';
+    window._pi = await compressImage(this.files[0]);
+    if (label) label.textContent = '✓';
+    setTimeout(() => { if (label) label.textContent = orig; }, 1500);
+  }
 });
 
-function promptDeleteBlog(e, i) {
+function promptDeleteBlog(e, id) {
   e.stopPropagation();
   playClick();
   const m = document.getElementById('mcontent');
   m.innerHTML = `<h3>erase</h3><p style="color:var(--muted);font-size:11px;line-height:1.7;margin-bottom:14px">confirm to remove.</p>
     <input type="password" id="del-pw" placeholder="password" autocomplete="off">
     <div style="font-size:10px;color:var(--accent);letter-spacing:.1em;margin:6px 0 8px;opacity:0;transition:opacity .2s" id="del-err">wrong.</div>
-    <button class="btn" onclick="confirmDeleteBlog(${i})">confirm</button>`;
+    <button class="btn" onclick="confirmDeleteBlog('${id}')">confirm</button>`;
   document.getElementById('moverlay').classList.add('active');
   setTimeout(() => { const pw = document.getElementById('del-pw'); if (pw) pw.focus(); }, 50);
-  document.getElementById('del-pw').addEventListener('keydown', e => { if (e.key === 'Enter') confirmDeleteBlog(i); });
+  document.getElementById('del-pw').addEventListener('keydown', e => { if (e.key === 'Enter') confirmDeleteBlog(id); });
 }
 
-function confirmDeleteBlog(i) {
+async function confirmDeleteBlog(id) {
   const pw = document.getElementById('del-pw');
   if (!pw) return;
-  if (pw.value === 'bingotown') {
-    posts.splice(i, 1);
-    closeModal(null, 1);
-    renderBlog();
-  } else {
+  if (pw.value !== 'bingotown') {
     pw.value = '';
     const err = document.getElementById('del-err');
     err.style.opacity = '1';
     setTimeout(() => err.style.opacity = '0', 1500);
+    return;
   }
+  closeModal(null, 1);
+  await fetch(`/api/posts/${id}`, { method: 'DELETE', headers: { 'X-Auth': 'bingotown' } });
+  posts = posts.filter(p => p.id !== id);
+  renderBlog();
 }
 
-function postPhoto() {
+async function postPhoto() {
   playClick();
-  posts.unshift({ s: window._pi || '', cap: document.getElementById('bcap').value || '',
-    d: new Date().toISOString().split('T')[0], h: Math.random() * 360 | 0 });
-  document.getElementById('bcap').value = ''; window._pi = null; renderBlog();
+  const cap = document.getElementById('bcap').value || '';
+  const post = { s: window._pi || '', cap, d: new Date().toISOString().split('T')[0], h: Math.random() * 360 | 0 };
+  const btn = document.querySelector('.blog-bar .btn');
+  if (btn) btn.textContent = '...';
+  try {
+    const res = await fetch('/api/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Auth': 'bingotown' },
+      body: JSON.stringify(post)
+    });
+    const saved = await res.json();
+    posts.unshift(saved);
+  } catch(e) { posts.unshift({ ...post, id: Date.now().toString() }); }
+  document.getElementById('bcap').value = '';
+  window._pi = null;
+  document.getElementById('bfile').value = '';
+  if (btn) btn.textContent = 'post';
+  renderBlog();
 }
 
 // ── MODAL
