@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<!-- you're reading this. we know. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>.</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='90' font-size='90'>.</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400&display=swap');
+
+  :root {
+    --bg: #f5f4f0;
+    --fg: #111;
+    --muted: #999;
+    --faint: #ccc;
+    --accent: #b5332e;
+    --mono: 'DM Mono', monospace;
+    --serif: 'Instrument Serif', serif;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden}
+
+  body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-weight:300;font-size:13px;cursor:crosshair}
+
+  body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size:180px}
+
+  ::selection{background:var(--fg);color:var(--bg)}
+  ::-webkit-scrollbar{width:3px;height:3px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--faint)}
+
+  /* TRACKER DOT */
+  #tracker{position:fixed;width:4px;height:4px;border-radius:50%;background:var(--fg);opacity:.12;
+    pointer-events:none;z-index:9998;transition:left .8s cubic-bezier(.23,1,.32,1),top .8s cubic-bezier(.23,1,.32,1);
+    will-change:left,top}
+
+  .wipe{position:fixed;inset:0;background:var(--fg);z-index:1000;transform:scaleX(0);transform-origin:left;pointer-events:none}
+  .wipe.in{animation:wipeIn .32s cubic-bezier(.76,0,.24,1) forwards}
+  .wipe.out{animation:wipeOut .32s cubic-bezier(.76,0,.24,1) forwards}
+  @keyframes wipeIn{from{transform:scaleX(0);transform-origin:left}to{transform:scaleX(1);transform-origin:left}}
+  @keyframes wipeOut{from{transform:scaleX(1);transform-origin:right}to{transform:scaleX(0);transform-origin:right}}
+
+  /* LANDING */
+  .landing{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative}
+  .landing nav{display:flex;flex-direction:column;align-items:center}
+  .landing nav a{
+    color:var(--fg);text-decoration:none;font-size:15px;letter-spacing:.18em;
+    text-transform:lowercase;padding:7px 0;position:relative;transition:color .2s;
+    opacity:0;animation:rise .5s ease forwards}
+  .landing nav a:nth-child(1){animation-delay:.1s}
+  .landing nav a:nth-child(2){animation-delay:.2s}
+  .landing nav a:nth-child(3){animation-delay:.3s}
+  .landing nav a:nth-child(4){animation-delay:.4s}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  .landing nav a::after{content:'';position:absolute;bottom:5px;left:0;width:0;height:1px;background:var(--accent);transition:width .3s cubic-bezier(.25,.1,.25,1)}
+  .landing nav a:hover{color:var(--accent)}
+  .landing nav a:hover::after{width:100%}
+
+  .corner{position:fixed;font-size:10px;color:var(--muted);letter-spacing:.08em;z-index:5;transition:opacity .3s}
+  .corner.tl{top:20px;left:20px}
+  .corner.tr{top:20px;right:20px}
+  .corner.bl{bottom:20px;left:20px}
+  .corner.br{bottom:20px;right:20px}
+
+  /* PAGE PATH NARRATION */
+  .page-whisper{
+    position:fixed;top:46px;left:50%;transform:translateX(-50%);
+    font-size:9px;color:var(--faint);letter-spacing:.08em;z-index:10;
+    opacity:0;transition:opacity .6s;white-space:nowrap}
+  .page-whisper.visible{opacity:1}
+
+  /* PAGES */
+  .page{display:none;min-height:100vh;padding:70px 30px 30px;overflow-y:auto;height:100vh;
+    flex-direction:column;align-items:center}
+  .page.active{display:flex}
+  .page-back{position:fixed;top:20px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted);text-decoration:none;letter-spacing:.08em;z-index:10;cursor:crosshair;transition:color .2s}
+  .page-back:hover{color:var(--fg)}
+  .page-title{font-family:var(--serif);font-size:48px;font-weight:400;font-style:italic;margin-bottom:10px;opacity:0;animation:rise .4s ease .15s forwards;text-align:center}
+  .page-sub{color:var(--muted);font-size:11px;margin-bottom:40px;line-height:1.7;max-width:440px;opacity:0;animation:rise .4s ease .25s forwards;text-align:center}
+
+  /* SHIRT */
+  .data-harvest{margin-bottom:16px;display:flex;flex-direction:column;align-items:center}
+  .data-line{
+    font-size:13px;padding:5px 0;display:flex;gap:12px;align-items:baseline;
+    opacity:0;transform:translateY(4px);transition:opacity .4s,transform .4s}
+  .data-line.visible{opacity:1;transform:translateY(0)}
+  .data-label{color:var(--muted);font-size:10px;letter-spacing:.1em;min-width:90px;text-transform:uppercase;text-align:right;transition:color 60s linear}
+  .data-label.darkened{color:var(--fg)}
+  .data-val{font-weight:400;letter-spacing:.02em;min-width:160px}
+
+  .data-extras{
+    margin:14px 0 0;display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center;
+    opacity:0;transform:translateY(4px);transition:opacity .4s .2s,transform .4s .2s}
+  .data-extras.visible{opacity:1;transform:translateY(0)}
+  .hex-swatch{width:18px;height:18px;border-radius:2px;border:1px solid #e0e0e0}
+  .hex-code{font-size:12px;color:var(--muted);letter-spacing:.05em}
+  .redaction-cycle{font-size:10px;color:var(--faint);letter-spacing:.1em}
+  .expiry{font-size:10px;color:var(--faint);letter-spacing:.05em;margin-top:4px;text-align:center}
+
+  .still-watching{
+    font-size:9px;color:var(--faint);letter-spacing:.15em;text-transform:uppercase;
+    margin-top:16px;opacity:0;transition:opacity .5s;text-align:center}
+  .still-watching.visible{opacity:1}
+
+  .shirt-layout{display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;margin-top:24px;justify-content:center}
+
+  .shirt-preview{
+    width:280px;height:340px;border:1px solid #e0e0e0;display:flex;
+    align-items:center;justify-content:center;background:#fff;flex-shrink:0;
+    position:relative;overflow:hidden}
+
+  .tee-svg{width:190px;height:230px;transition:transform .15s ease-out}
+  .tee-svg > path:first-of-type{fill:none;stroke:var(--fg);stroke-width:1.2;stroke-dasharray:900;stroke-dashoffset:900;animation:drawTee 2.2s ease forwards}
+  @keyframes drawTee{to{stroke-dashoffset:0}}
+  .pocket-text{font-family:var(--mono);font-size:4.5px;fill:var(--muted);opacity:0;transition:opacity .3s}
+  .pocket-text.visible{opacity:1}
+
+  .shirt-controls{flex:1;min-width:200px;display:flex;flex-direction:column;align-items:center}
+  .price-tag{font-size:11px;color:var(--muted);margin-bottom:20px;text-align:center}
+
+  .size-row{display:flex;gap:0;margin-bottom:20px}
+  .size-row label{padding:9px 16px;border:1px solid #ddd;cursor:crosshair;font-size:11px;transition:all .15s;user-select:none}
+  .size-row label:first-child{border-radius:2px 0 0 2px}
+  .size-row label:last-child{border-radius:0 2px 2px 0}
+  .size-row label+label{border-left:none}
+  .size-row input{display:none}
+  .size-row label:has(input:checked){background:var(--fg);color:var(--bg);border-color:var(--fg)}
+
+  .btn{background:var(--fg);color:var(--bg);border:none;padding:13px 36px;font-family:var(--mono);font-size:11px;letter-spacing:.15em;cursor:crosshair;text-transform:lowercase;transition:background .2s,transform .1s}
+  .btn:hover{background:var(--accent)}.btn:active{transform:scale(.98)}
+
+  /* PRINT */
+  .print-layout{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start;justify-content:center}
+  .print-left{flex:1;min-width:280px;max-width:420px}
+  .upload-zone{width:100%;height:180px;border:1px dashed var(--faint);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:crosshair;transition:border-color .2s,background .2s;margin-bottom:16px}
+  .upload-zone:hover{border-color:var(--fg)}
+  .upload-zone.dragover{border-color:var(--accent);background:rgba(181,51,46,.02)}
+  .upload-zone p{color:var(--muted);font-size:11px}
+  .upload-zone .fmt{font-size:10px;color:#bbb}
+  .file-item{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee;font-size:11px;animation:rise .3s ease forwards}
+  .file-remove{color:var(--muted);cursor:crosshair;font-size:10px}.file-remove:hover{color:var(--accent)}
+  .print-preview{width:260px;height:260px;border:1px solid #e0e0e0;background:#fafaf8;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;overflow:hidden}
+  .print-preview canvas{width:100%!important;height:100%!important}
+  .wireframe-ph{color:var(--faint);font-size:10px;letter-spacing:.1em;text-align:center}
+  .quote-box{padding:18px;border:1px solid #e0e0e0;max-width:420px;margin-top:20px;font-size:11px;line-height:2;animation:rise .3s ease forwards}
+
+  /* STORE */
+  .store-cat{display:flex;gap:0;margin-bottom:24px;flex-wrap:wrap;justify-content:center}
+  .store-cat button{background:none;border:1px solid #ddd;padding:7px 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;cursor:crosshair;text-transform:lowercase;transition:all .15s}
+  .store-cat button+button{border-left:none}
+  .store-cat button.active{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+  .store-cat button:hover:not(.active){background:rgba(0,0,0,.02)}
+  .store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px;max-width:850px;width:100%}
+  .store-item{border:1px solid #eee;padding:14px;transition:border-color .2s;cursor:crosshair;position:relative}
+  .store-item:hover{border-color:var(--fg)}
+  .item-img{width:100%;aspect-ratio:1;background:#f0efec;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:30px;position:relative}
+  .item-name{font-size:11px;margin-bottom:3px;letter-spacing:.03em}
+  .item-price{font-size:11px;color:var(--muted)}
+  .ship-from{position:absolute;bottom:6px;right:6px;font-size:8px;color:var(--muted);display:flex;align-items:center;gap:3px}
+  .ship-from::before{content:'';width:5px;height:5px;border-radius:50%;background:#4caf50;animation:pulse 2s ease infinite}
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+  .sold-out{font-size:9px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase}
+
+  /* BLOG */
+  .film-strip{display:flex;gap:16px;overflow-x:auto;overflow-y:hidden;padding-bottom:20px;scroll-snap-type:x proximity;height:calc(100vh - 240px);align-items:flex-start}
+  .blog-frame{flex-shrink:0;width:280px;scroll-snap-align:start;cursor:crosshair}
+  .blog-img-wrap{width:100%;background:#e8e6e1;position:relative;overflow:hidden;border:1px solid #e0e0e0}
+  .blog-img-wrap img{width:100%;height:100%;object-fit:cover;filter:grayscale(30%) contrast(1.05) brightness(.98);transition:filter .4s}
+  .blog-frame:hover img{filter:grayscale(0%) contrast(1) brightness(1)}
+  .blog-placeholder{width:100%;height:100%}
+  .blog-caption{font-size:10px;color:var(--muted);padding:8px 0 2px;letter-spacing:.04em}
+  .blog-date{font-size:9px;color:#ccc}
+  .sprocket{position:absolute;top:6px;left:50%;transform:translateX(-50%);display:flex;gap:18px}
+  .sprocket-hole{width:8px;height:8px;border-radius:50%;border:1px solid rgba(0,0,0,.08)}
+  .blog-bar{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid #eee;padding:10px 30px;display:flex;align-items:center;gap:12px;z-index:10;font-size:11px}
+  .blog-bar input[type="text"]{flex:1;border:1px solid #ddd;padding:8px 10px;font-family:var(--mono);font-size:11px;background:transparent;outline:none;cursor:crosshair}
+  .blog-bar input[type="text"]:focus{border-color:var(--fg)}
+  .blog-bar label{cursor:crosshair;color:var(--muted);font-size:10px;letter-spacing:.1em;white-space:nowrap;transition:color .15s}
+  .blog-bar label:hover{color:var(--fg)}
+
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);z-index:100;align-items:center;justify-content:center}
+  .modal-overlay.active{display:flex}
+  .modal{background:var(--bg);padding:32px;max-width:360px;width:90%;animation:rise .3s ease}
+  .modal h3{font-family:var(--serif);font-weight:400;font-style:italic;font-size:24px;margin-bottom:14px}
+  .modal p{font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:14px}
+  .modal input{width:100%;border:1px solid #ddd;padding:10px;font-family:var(--mono);font-size:11px;margin-bottom:8px;background:transparent;outline:none;cursor:crosshair}
+  .modal input:focus{border-color:var(--fg)}
+  .modal .btn{width:100%;margin-top:6px}
+  .confirmed{text-align:center;padding:24px 0}
+  .confirmed .check{font-size:36px;margin-bottom:10px}
+
+  .easter-egg{position:fixed;inset:0;background:var(--fg);color:var(--bg);display:none;align-items:center;justify-content:center;z-index:5000;font-family:var(--serif);font-size:28px;font-style:italic;text-align:center;padding:30px;line-height:1.5;cursor:crosshair}
+  .easter-egg.active{display:flex}
+
+  @media(max-width:600px){
+    .shirt-layout,.print-layout{flex-direction:column;align-items:center}
+    .shirt-preview{width:100%;max-width:280px}
+    .print-preview{width:100%}
+    .blog-frame{width:240px}
+    .film-strip{height:calc(100vh - 260px)}
+    .page-title{font-size:36px}
+  }
+</style>
+</head>
+<body>
+
+<!-- this runs once. we save the result. -->
+<div id="tracker"></div>
+<div class="wipe" id="wipe"></div>
+<span class="corner tl" id="clock"></span>
+<span class="corner tr" id="visitor-count"></span>
+<span class="corner bl" id="time-spent">00:00</span>
+<span class="corner br">nowhere, internet</span>
+<div class="page-whisper" id="whisper"></div>
+
+<!-- LANDING -->
+<div class="landing" id="landing">
+  <nav>
+    <a href="#" onclick="return nav('shirt')">shirt</a>
+    <a href="#" onclick="return nav('print')">print</a>
+    <a href="#" onclick="return nav('store')">store</a>
+    <a href="#" onclick="return nav('blog')">blog</a>
+  </nav>
+</div>
+
+<!-- SHIRT -->
+<div class="page" id="shirt">
+  <a class="page-back" onclick="nav('home')">← back</a>
+  <div class="page-title">shirt</div>
+  <p class="page-sub">we already know. five measurements taken the moment you arrived. redacted, printed, shipped.</p>
+  <div class="data-harvest" id="data-harvest">
+    <div class="data-line" id="d-ip"><span class="data-label">ip</span> <span class="data-val">scanning...</span></div>
+    <div class="data-line" id="d-bat"><span class="data-label">battery</span> <span class="data-val">—</span></div>
+    <div class="data-line" id="d-loc"><span class="data-label">coordinates</span> <span class="data-val">—</span></div>
+    <div class="data-line" id="d-ts"><span class="data-label">timestamp</span> <span class="data-val">—</span></div>
+    <div class="data-line" id="d-res"><span class="data-label">screen</span> <span class="data-val">—</span></div>
+    <div class="data-line" id="d-mystery"><span class="data-label">&nbsp;</span> <span class="data-val">—</span></div>
+  </div>
+  <div class="data-extras" id="data-extras">
+    <div class="hex-swatch" id="hex-swatch"></div>
+    <span class="hex-code" id="hex-code"></span>
+    <span class="redaction-cycle" id="rcycle"></span>
+  </div>
+  <div class="expiry" id="expiry"></div>
+  <div class="still-watching" id="still-watching">still watching</div>
+  <div class="shirt-layout">
+    <div class="shirt-preview" id="shirt-preview">
+      <svg class="tee-svg" id="tee-svg" viewBox="0 0 200 240">
+        <path d="
+          M70,28 Q72,20 80,16 Q90,10 100,10 Q110,10 120,16 Q128,20 130,28
+          L148,34 L164,42 L172,56 L180,78
+          L160,86 L150,70 L148,64 L148,82 L148,210
+          Q148,218 140,218 L60,218 Q52,218 52,210
+          L52,82 L52,64 L50,70 L40,86 L20,78
+          L28,56 L36,42 L52,34 Z"/>
+        <path d="M78,20 Q90,30 100,30 Q110,30 122,20" style="stroke-dasharray:none;stroke-dashoffset:0;animation:none;stroke-width:1;fill:none;stroke:var(--fg)"/>
+        <rect x="62" y="68" width="28" height="24" rx="1" fill="none" stroke="var(--muted)" stroke-width=".4" opacity=".3"/>
+        <text class="pocket-text" x="64" y="74" id="pkt0">···</text>
+        <text class="pocket-text" x="64" y="79" id="pkt1">···</text>
+        <text class="pocket-text" x="64" y="84" id="pkt2">···</text>
+        <text class="pocket-text" x="64" y="89" id="pkt3">···</text>
+        <text class="pocket-text" x="64" y="94" id="pkt4" style="font-size:4.2px">···</text>
+        <text class="pocket-text" x="64" y="99" id="pkt5" style="font-size:4.2px">···</text>
+        <rect id="pkt-color" x="64" y="102" width="6" height="6" rx="1" fill="#999" opacity="0"/>
+        <text class="pocket-text" x="73" y="107" id="pkt-hex" style="font-size:4px">···</text>
+        <text class="pocket-text" x="100" y="214" id="pkt-exp" style="font-size:3.2px;text-anchor:middle">···</text>
+      </svg>
+    </div>
+    <div class="shirt-controls">
+      <p class="price-tag">$48 — free shipping, no returns, no questions, no choice</p>
+      <div class="size-row">
+        <label><input type="radio" name="sz" value="S">S</label>
+        <label><input type="radio" name="sz" value="M" checked>M</label>
+        <label><input type="radio" name="sz" value="L">L</label>
+        <label><input type="radio" name="sz" value="XL">XL</label>
+      </div>
+      <button class="btn" onclick="openModal('shirt')">order</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT -->
+<div class="page" id="print">
+  <a class="page-back" onclick="nav('home')">← back</a>
+  <div class="page-title">print</div>
+  <p class="page-sub">upload .stl, .obj, or .3mf — get a quote. PLA, PETG, or ABS. we print it, ship it, done.</p>
+  <div class="print-layout">
+    <div class="print-left">
+      <div class="upload-zone" id="dropzone" onclick="document.getElementById('finput').click()">
+        <p>drop files here</p>
+        <p class="fmt">.stl &nbsp; .obj &nbsp; .3mf</p>
+        <input type="file" id="finput" accept=".stl,.obj,.3mf" multiple hidden>
+      </div>
+      <div id="flist"></div>
+      <div class="size-row" style="margin-top:12px">
+        <label><input type="radio" name="mat" value="PLA" checked>PLA</label>
+        <label><input type="radio" name="mat" value="PETG">PETG</label>
+        <label><input type="radio" name="mat" value="ABS">ABS</label>
+      </div>
+      <button class="btn" onclick="getQuote()" id="qbtn" disabled>get quote</button>
+      <div class="quote-box" id="qbox" style="display:none"></div>
+    </div>
+    <div class="print-preview" id="ppreview">
+      <div class="wireframe-ph" id="wph"><div style="font-size:24px;margin-bottom:6px;opacity:.3">△</div>upload to preview</div>
+      <canvas id="wfcanvas" style="display:none"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- STORE -->
+<!-- we track which pages you visit. -->
+<div class="page" id="store">
+  <a class="page-back" onclick="nav('home')">← back</a>
+  <div class="page-title">store</div>
+  <p class="page-sub">things i think are cool. shipped from somewhere on earth.</p>
+  <div class="store-cat" id="scats"></div>
+  <div class="store-grid" id="sgrid"></div>
+</div>
+
+<!-- BLOG -->
+<div class="page" id="blog" style="padding-bottom:60px">
+  <a class="page-back" onclick="nav('home')">← back</a>
+  <div class="page-title">blog</div>
+  <p class="page-sub">bad photos. no editing. no curation. scroll sideways.</p>
+  <div class="film-strip" id="fstrip"></div>
+  <div class="blog-bar">
+    <label for="bfile">+ photo</label>
+    <input type="file" id="bfile" accept="image/*" hidden>
+    <input type="text" id="bcap" placeholder="caption (optional)">
+    <button class="btn" style="padding:8px 18px;font-size:10px" onclick="postPhoto()">post</button>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="moverlay" onclick="closeModal(event)">
+  <div class="modal" id="mcontent"></div>
+</div>
+
+<!-- EASTER EGG -->
+<div class="easter-egg" id="egg" onclick="this.classList.remove('active')">you found nothing.<br>congratulations.</div>
+
+<script>
+// ── CONSOLE SURVEILLANCE
+// this runs whether or not you open the console.
+const _msgs = [
+  'collecting...',
+  'done.',
+  'you stayed %TIME% seconds longer than average.',
+  'most people don\'t look at the source.',
+  'we noticed you hesitated.',
+  'still here.',
+  'the shirt remembers.',
+];
+let _mi = 0;
+setInterval(() => {
+  if (_mi < _msgs.length) {
+    const m = _msgs[_mi].replace('%TIME%', String(12 + Math.floor(Math.random() * 90)));
+    console.log('%c' + m, 'color:#999;font-family:monospace;font-size:11px');
+    _mi++;
+  }
+}, 8000);
+
+// ── TRACKER DOT (follows cursor with delay)
+const tracker = document.getElementById('tracker');
+let lastTouchX = -100, lastTouchY = -100;
+
+document.addEventListener('mousemove', e => {
+  tracker.style.left = e.clientX + 'px';
+  tracker.style.top = e.clientY + 'px';
+});
+
+document.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  tracker.style.left = t.clientX + 'px';
+  tracker.style.top = t.clientY + 'px';
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  const t = e.touches[0];
+  tracker.style.left = t.clientX + 'px';
+  tracker.style.top = t.clientY + 'px';
+}, { passive: true });
+
+// ── AUDIO
+const AC = window.AudioContext || window.webkitAudioContext;
+let ac;
+function ensureAC() { if (!ac) ac = new AC(); return ac; }
+
+function playClick() {
+  const a = ensureAC(), o = a.createOscillator(), g = a.createGain();
+  o.connect(g); g.connect(a.destination);
+  o.frequency.value = 800; o.type = 'sine';
+  g.gain.setValueAtTime(.08, a.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .06);
+  o.start(a.currentTime); o.stop(a.currentTime + .06);
+}
+
+function playScanTone(index) {
+  const a = ensureAC(), o = a.createOscillator(), g = a.createGain();
+  o.connect(g); g.connect(a.destination);
+  o.frequency.value = 220 + index * 110; o.type = 'sine';
+  g.gain.setValueAtTime(.06, a.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .25);
+  o.start(a.currentTime); o.stop(a.currentTime + .25);
+}
+
+// ── CLOCK
+setInterval(() => {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}, 1000);
+
+// ── TIME SPENT
+const t0 = Date.now();
+setInterval(() => {
+  const s = Math.floor((Date.now() - t0) / 1000);
+  document.getElementById('time-spent').textContent =
+    String(s / 60 | 0).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}, 1000);
+
+// ── VISITOR COUNT
+const vc = 1247 + Math.floor(Math.random() * 40); let dc = 0;
+(function tick() {
+  if (dc < vc) { dc += Math.ceil((vc - dc) / 12); if (dc > vc) dc = vc;
+    document.getElementById('visitor-count').textContent = dc.toLocaleString();
+    requestAnimationFrame(tick); }
+})();
+
+// ── REDACTION CYCLE
+const CYCLE = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
+const heavyCensor = [[0], [2], [0, 2]][CYCLE % 3];
+
+// ── PAGE PATH TRACKING
+const pageHistory = [];
+const pageNames = { shirt: 'the shirt', print: 'print', store: 'the store', blog: 'the blog' };
+
+function whisper(page) {
+  const w = document.getElementById('whisper');
+  if (pageHistory.length > 0) {
+    const last = pageHistory[pageHistory.length - 1];
+    if (last !== 'home' && last !== page) {
+      w.textContent = 'you were just looking at ' + (pageNames[last] || last);
+      w.classList.add('visible');
+      setTimeout(() => w.classList.remove('visible'), 4000);
+      return;
+    }
+  }
+  w.classList.remove('visible');
+}
+
+// ── NAVIGATION
+let curPage = 'home';
+function nav(p) {
+  playClick();
+  const w = document.getElementById('wipe');
+  w.className = 'wipe in';
+  setTimeout(() => {
+    document.getElementById('landing').style.display = 'none';
+    document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+    if (p === 'home') document.getElementById('landing').style.display = 'flex';
+    else {
+      document.getElementById(p).classList.add('active');
+      if (p === 'shirt') harvestData();
+      if (p === 'blog') renderBlog();
+      if (p === 'store') renderStore();
+    }
+    whisper(p);
+    pageHistory.push(p);
+    curPage = p;
+    w.className = 'wipe out';
+    setTimeout(() => { w.className = 'wipe'; }, 320);
+  }, 320);
+  return false;
+}
+
+// ── TEE FOLLOWS CURSOR / GYROSCOPE
+let teeRotX = 0, teeRotY = 0;
+document.addEventListener('mousemove', e => {
+  if (curPage !== 'shirt') return;
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+  teeRotY = ((e.clientX - cx) / cx) * 3;
+  teeRotX = ((e.clientY - cy) / cy) * -2;
+  applyTeeRotation();
+});
+if (window.DeviceOrientationEvent) {
+  window.addEventListener('deviceorientation', e => {
+    if (curPage !== 'shirt') return;
+    if (e.gamma !== null) teeRotY = Math.max(-3, Math.min(3, e.gamma / 15));
+    if (e.beta !== null) teeRotX = Math.max(-2, Math.min(2, (e.beta - 45) / 30));
+    applyTeeRotation();
+  });
+}
+function applyTeeRotation() {
+  const svg = document.getElementById('tee-svg');
+  if (svg) svg.style.transform = `perspective(400px) rotateX(${teeRotX}deg) rotateY(${teeRotY}deg)`;
+}
+
+// ── SHIRT: DATA HARVEST
+const SD = { ip: null, bat: null, loc: null, ts: null, res: null, mystery: null, hex: null };
+let harvested = false;
+let liveInterval = null;
+
+async function harvestData() {
+  if (harvested) {
+    // restart live updates if returning to shirt
+    startLiveUpdates();
+    return;
+  }
+  harvested = true;
+  const lines = document.querySelectorAll('.data-line');
+  const pktEls = [0, 1, 2, 3, 4, 5].map(i => document.getElementById('pkt' + i));
+  const orderTs = Math.floor(Date.now() / 1000);
+
+  async function reveal(idx, val, pktVal, delay) {
+    return new Promise(res => {
+      setTimeout(() => {
+        playScanTone(idx);
+        lines[idx].querySelector('.data-val').textContent = val;
+        lines[idx].classList.add('visible');
+        pktEls[idx].textContent = pktVal;
+        pktEls[idx].classList.add('visible');
+        res();
+      }, delay);
+    });
+  }
+
+  // 1. IP
+  try {
+    const r = await fetch('https://api.ipify.org?format=json');
+    SD.ip = (await r.json()).ip;
+  } catch {
+    SD.ip = [10 + Math.random() * 190 | 0, Math.random() * 255 | 0, Math.random() * 255 | 0, Math.random() * 255 | 0].join('.');
+  }
+  const cIP = censorIP(SD.ip, heavyCensor.includes(0));
+  await reveal(0, cIP, cIP, 400);
+
+  // 2. Battery — raw, no censoring
+  try {
+    const b = await navigator.getBattery();
+    SD.bat = Math.round(b.level * 100);
+  } catch { SD.bat = Math.floor(Math.random() * 100); }
+  await reveal(1, SD.bat + '%', SD.bat + '%', 700);
+
+  // 3. Coordinates
+  try {
+    const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000 }));
+    SD.loc = [pos.coords.latitude.toFixed(6), pos.coords.longitude.toFixed(6)];
+  } catch {
+    SD.loc = [(25 + Math.random() * 25).toFixed(6), (-120 + Math.random() * 60).toFixed(6)];
+  }
+  const cLoc = censorCoord(SD.loc[0], heavyCensor.includes(2)) + ', ' + censorCoord(SD.loc[1], heavyCensor.includes(2));
+  await reveal(2, cLoc, cLoc, 700);
+
+  // 4. Timestamp — raw, no censoring
+  SD.ts = orderTs;
+  await reveal(3, String(orderTs), String(orderTs), 700);
+
+  // 5. Screen — raw
+  SD.res = screen.width + '×' + screen.height;
+  await reveal(4, SD.res, SD.res, 700);
+
+  // 6. Mystery number
+  const cv = document.createElement('canvas');
+  const cx = cv.getContext('2d');
+  cx.textBaseline = 'top'; cx.font = '14px Arial'; cx.fillText('fingerprint', 2, 2);
+  let fpHash = 0;
+  const d = cx.getImageData(0, 0, cv.width, cv.height).data;
+  for (let i = 0; i < d.length; i += 37) fpHash = ((fpHash << 5) - fpHash + d[i]) | 0;
+  SD.mystery = Math.abs(fpHash) % 100;
+  await reveal(5, String(SD.mystery), String(SD.mystery), 900);
+
+  // Hex + extras
+  setTimeout(() => {
+    const raw = SD.ip + SD.bat + SD.loc.join('') + SD.ts + SD.res + SD.mystery;
+    let hash = 0;
+    for (let i = 0; i < raw.length; i++) hash = ((hash << 5) - hash) + raw.charCodeAt(i) | 0;
+    const hex = '#' + ('000000' + (Math.abs(hash) % 16777215).toString(16)).slice(-6);
+    SD.hex = hex;
+
+    document.getElementById('hex-swatch').style.background = hex;
+    document.getElementById('hex-code').textContent = hex;
+    document.getElementById('rcycle').textContent = 'cycle ' + String(CYCLE).padStart(3, '0');
+
+    const expDate = new Date((SD.ts + 365 * 24 * 60 * 60) * 1000);
+    const expStr = 'exp ' + expDate.toISOString().split('T')[0];
+    document.getElementById('expiry').textContent = expStr;
+    document.getElementById('pkt-exp').textContent = expStr;
+    document.getElementById('pkt-exp').classList.add('visible');
+
+    document.getElementById('pkt-color').setAttribute('fill', hex);
+    document.getElementById('pkt-color').setAttribute('opacity', '1');
+    document.getElementById('pkt-hex').textContent = hex;
+    document.getElementById('pkt-hex').classList.add('visible');
+
+    document.getElementById('data-extras').classList.add('visible');
+
+    // final low hum
+    const a = ensureAC(), o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.frequency.value = 150; o.type = 'sine';
+    g.gain.setValueAtTime(.05, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .6);
+    o.start(a.currentTime); o.stop(a.currentTime + .6);
+
+    // start live updates + label darkening
+    startLiveUpdates();
+    darkenLabels();
+  }, 600);
+}
+
+// ── LIVE UPDATES (battery ticks, timestamp counts up)
+function startLiveUpdates() {
+  if (liveInterval) clearInterval(liveInterval);
+
+  liveInterval = setInterval(async () => {
+    if (curPage !== 'shirt') return;
+
+    // update battery live
+    try {
+      const b = await navigator.getBattery();
+      const newBat = Math.round(b.level * 100);
+      if (newBat !== SD.bat) {
+        SD.bat = newBat;
+        document.querySelector('#d-bat .data-val').textContent = SD.bat + '%';
+        document.getElementById('pkt1').textContent = SD.bat + '%';
+      }
+    } catch {}
+
+    // update timestamp live (counts up from original)
+    const now = Math.floor(Date.now() / 1000);
+    document.querySelector('#d-ts .data-val').textContent = String(now);
+    document.getElementById('pkt3').textContent = String(now);
+  }, 1000);
+
+  // "still watching" pulse
+  setInterval(() => {
+    if (curPage !== 'shirt') return;
+    const sw = document.getElementById('still-watching');
+    sw.classList.add('visible');
+    setTimeout(() => sw.classList.remove('visible'), 3000);
+  }, 30000);
+}
+
+// ── LABELS DARKEN OVER TIME
+function darkenLabels() {
+  // trigger CSS transition: labels go from --muted to --fg over 60s
+  setTimeout(() => {
+    document.querySelectorAll('.data-label').forEach(l => l.classList.add('darkened'));
+  }, 100);
+}
+
+function censorIP(ip, heavy) {
+  const p = ip.split('.');
+  const seed = parseInt(p[0]) + parseInt(p[2]);
+  if (heavy) {
+    const hide = [seed % 4, (seed + 1) % 4];
+    return p.map((v, i) => hide.includes(i) ? '███' : v).join('.');
+  }
+  return p.map((v, i) => i === seed % 4 ? '███' : v).join('.');
+}
+
+function censorCoord(c, heavy) {
+  const parts = c.split('.');
+  const dec = parts[1] || '000000';
+  if (heavy) return parts[0] + '.' + dec[0] + '████' + dec[5];
+  return parts[0] + '.' + dec[0] + dec[1] + '██' + dec[4] + dec[5];
+}
+
+// ── PRINT
+let ufiles = [];
+const dz = document.getElementById('dropzone'), fi = document.getElementById('finput');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover') });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); addF(e.dataTransfer.files) });
+fi.addEventListener('change', () => addF(fi.files));
+
+function addF(files) {
+  [...files].forEach(f => { if (/\.(stl|obj|3mf)$/i.test(f.name)) ufiles.push({ name: f.name, size: f.size }) });
+  renderF(); if (ufiles.length > 0) initWF();
+}
+function renderF() {
+  document.getElementById('flist').innerHTML = ufiles.map((f, i) => `
+    <div class="file-item"><span>${f.name} <span style="color:#bbb">(${(f.size / 1024).toFixed(0)}kb)</span></span>
+    <span class="file-remove" onclick="remF(${i})">remove</span></div>`).join('');
+  document.getElementById('qbtn').disabled = ufiles.length === 0;
+}
+function remF(i) { ufiles.splice(i, 1); renderF(); if (!ufiles.length) killWF(); }
+
+let wfA = null;
+function initWF() {
+  document.getElementById('wph').style.display = 'none';
+  const c = document.getElementById('wfcanvas'); c.style.display = 'block';
+  const ctx = c.getContext('2d'), W = 260, H = 260;
+  c.width = W * 2; c.height = H * 2; c.style.width = W + 'px'; c.style.height = H + 'px'; ctx.scale(2, 2);
+  const V = []; for (let i = 0; i < 24; i++) V.push([(Math.random() - .5) * 80, (Math.random() - .5) * 80, (Math.random() - .5) * 80]);
+  const E = []; for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) {
+    if (Math.hypot(V[i][0] - V[j][0], V[i][1] - V[j][1], V[i][2] - V[j][2]) < 65) E.push([i, j]);
+  }
+  let a = 0;
+  function draw() {
+    ctx.clearRect(0, 0, W, H); a += .008;
+    const P = V.map(([x, y, z]) => {
+      const rx = x * Math.cos(a) - z * Math.sin(a), rz = x * Math.sin(a) + z * Math.cos(a);
+      const ry = y * Math.cos(a * .7) - rz * Math.sin(a * .7), rz2 = y * Math.sin(a * .7) + rz * Math.cos(a * .7);
+      const s = 200 / (200 + rz2); return [W / 2 + rx * s, H / 2 + ry * s, rz2];
+    });
+    ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = .5;
+    E.forEach(([a, b]) => { ctx.beginPath(); ctx.moveTo(P[a][0], P[a][1]); ctx.lineTo(P[b][0], P[b][1]); ctx.stroke() });
+    P.forEach(([px, py, z]) => {
+      ctx.fillStyle = `rgba(0,0,0,${Math.max(.1, Math.min(.6, (z + 80) / 160))})`;
+      ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
+    });
+    wfA = requestAnimationFrame(draw);
+  }
+  draw();
+}
+function killWF() { if (wfA) cancelAnimationFrame(wfA); document.getElementById('wfcanvas').style.display = 'none'; document.getElementById('wph').style.display = 'block'; }
+
+function getQuote() {
+  const m = document.querySelector('input[name="mat"]:checked').value;
+  const ml = m === 'PLA' ? 1 : m === 'PETG' ? 1.3 : 1.5;
+  const ts = ufiles.reduce((s, f) => s + f.size, 0), base = Math.max(8, (ts / 1024 / 50) * 12 * ml), ship = 6.5, d = 3 + Math.random() * 4 | 0;
+  const b = document.getElementById('qbox'); b.style.display = 'block';
+  b.innerHTML = `material: ${m}<br>files: ${ufiles.length}<br>est: $${base.toFixed(2)}<br>shipping: $${ship.toFixed(2)}<br><strong>total: $${(base + ship).toFixed(2)}</strong><br>${d}–${d + 2} business days<br><br><button class="btn" onclick="openModal('print')">proceed</button>`;
+}
+
+// ── STORE
+const cities = ['shenzhen', 'tokyo', 'seoul', 'bangkok', 'warsaw', 'istanbul', 'são paulo', 'guadalajara', 'mumbai', 'nairobi'];
+const items = [
+  { n: 'miata brake caliper bracket', p: 24, c: 'miata', e: '🔧' },
+  { n: 'nb shift knob (titanium)', p: 89, c: 'miata', e: '⚙️' },
+  { n: 'hardtop weatherstrip kit', p: 42, c: 'miata', e: '🚗' },
+  { n: 'roll bar brace kit', p: 156, c: 'miata', e: '🛡️' },
+  { n: 'arduino starter kit', p: 35, c: 'engineering', e: '🤖' },
+  { n: 'digital calipers 8"', p: 18, c: 'engineering', e: '📐' },
+  { n: 'PLA filament 1kg matte blk', p: 22, c: 'engineering', e: '🖤' },
+  { n: 'soldering station kit', p: 48, c: 'engineering', e: '🔥' },
+  { n: 'resistance bands set', p: 19, c: 'fitness', e: '💪' },
+  { n: 'adjustable dumbbells (pair)', p: 145, c: 'fitness', e: '🏋️' },
+  { n: 'ab roller wheel', p: 14, c: 'fitness', e: '🔄' },
+  { n: 'korean ink brush set', p: 28, c: 'art', e: '🖌️' },
+  { n: 'chaekgeori print (framed)', p: 65, c: 'art', e: '🎨', so: 1 },
+  { n: 'hanji paper sampler', p: 16, c: 'art', e: '📜' },
+  { n: 'cat laser pointer (USB-C)', p: 12, c: 'misc', e: '🐱' },
+  { n: 'braided USB-C 6ft', p: 9, c: 'misc', e: '🔌' },
+];
+const cats = ['all', ...new Set(items.map(i => i.c))];
+let aCat = 'all';
+
+function renderStore() {
+  document.getElementById('scats').innerHTML = cats.map(c =>
+    `<button class="${c === aCat ? 'active' : ''}" onclick="fStore('${c}')">${c}</button>`).join('');
+  const f = aCat === 'all' ? items : items.filter(i => i.c === aCat);
+  document.getElementById('sgrid').innerHTML = f.map(i => {
+    const city = cities[Math.random() * cities.length | 0];
+    return `<div class="store-item" onclick="${i.so ? '' : `openModal('store','${i.n.replace(/'/g, "\\'")}',${i.p})`}">
+      <div class="item-img">${i.e}${!i.so ? `<span class="ship-from">${city}</span>` : ''}</div>
+      <div class="item-name">${i.n}</div>
+      ${i.so ? '<span class="sold-out">sold out</span>' : `<div class="item-price">$${i.p}</div>`}</div>`;
+  }).join('');
+}
+function fStore(c) { playClick(); aCat = c; renderStore(); }
+
+// ── BLOG
+let posts = [
+  { s: '', cap: 'parking lot at 6am', d: '2026-04-11', h: 40 },
+  { s: '', cap: 'cat doing nothing', d: '2026-04-09', h: 200 },
+  { s: '', cap: '', d: '2026-04-07', h: 0 },
+  { s: '', cap: 'forgot why i took this', d: '2026-04-03', h: 90 },
+  { s: '', cap: 'blurry', d: '2026-03-28', h: 30 },
+  { s: '', cap: 'idk', d: '2026-03-20', h: 210 },
+  { s: '', cap: 'miata in rain', d: '2026-03-14', h: 170 },
+  { s: '', cap: '', d: '2026-03-08', h: 340 },
+  { s: '', cap: 'ceiling', d: '2026-02-28', h: 55 },
+];
+
+function renderBlog() {
+  document.getElementById('fstrip').innerHTML = posts.map(p => {
+    const ht = 300 + Math.random() * 100 | 0;
+    const bg = p.s ? `<img src="${p.s}" alt="">` :
+      `<div class="blog-placeholder" style="background:hsl(${p.h},18%,72%)"></div>`;
+    return `<div class="blog-frame"><div class="blog-img-wrap" style="height:${ht}px">
+      <div class="sprocket"><div class="sprocket-hole"></div><div class="sprocket-hole"></div><div class="sprocket-hole"></div></div>
+      ${bg}</div>${p.cap ? `<div class="blog-caption">${p.cap}</div>` : ''}<div class="blog-date">${p.d}</div></div>`;
+  }).join('');
+}
+
+document.getElementById('bfile').addEventListener('change', function () {
+  if (this.files[0]) { const r = new FileReader(); r.onload = e => { window._pi = e.target.result }; r.readAsDataURL(this.files[0]); }
+});
+
+function postPhoto() {
+  playClick();
+  posts.unshift({ s: window._pi || '', cap: document.getElementById('bcap').value || '',
+    d: new Date().toISOString().split('T')[0], h: Math.random() * 360 | 0 });
+  document.getElementById('bcap').value = ''; window._pi = null; renderBlog();
+}
+
+// ── MODAL
+function openModal(t, n, p) {
+  playClick(); const m = document.getElementById('mcontent');
+  if (t === 'shirt') {
+    const sz = document.querySelector('input[name="sz"]:checked').value;
+    m.innerHTML = `<h3>confirm</h3><p>white tee, your data on the pocket<br>size ${sz} — $48<br><br><span style="font-size:10px;color:var(--muted)">ip · battery · coordinates · timestamp · screen · ${SD.mystery} · ${SD.hex}</span></p><input placeholder="email"><input placeholder="shipping address"><button class="btn" onclick="confirmOrder()">place order</button>`;
+  }
+  else if (t === 'print') m.innerHTML = `<h3>submit</h3><p>${ufiles.length} file(s) — quote via email in 24h</p><input placeholder="email"><button class="btn" onclick="confirmOrder()">submit</button>`;
+  else if (t === 'store') m.innerHTML = `<h3>${n}</h3><p>$${p} — ships in 5–12 days from somewhere</p><input placeholder="email"><input placeholder="shipping address"><button class="btn" onclick="confirmOrder()">buy it</button>`;
+  document.getElementById('moverlay').classList.add('active');
+}
+
+function confirmOrder() {
+  playClick(); document.getElementById('mcontent').innerHTML = `<div class="confirmed"><div class="check">✓</div><h3>done</h3><p>not really. this is a demo.<br>but imagine it worked.</p></div>`;
+  setTimeout(() => closeModal(null, 1), 2400);
+}
+
+function closeModal(e, f) { if (f || (e && e.target === document.getElementById('moverlay'))) document.getElementById('moverlay').classList.remove('active'); }
+
+// ── KONAMI
+const K = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]; let kp = 0;
+document.addEventListener('keydown', e => {
+  if (e.keyCode === K[kp]) { kp++; if (kp === K.length) { document.getElementById('egg').classList.add('active'); kp = 0; } } else kp = 0;
+});
+</script>
+</body>
+</html>
