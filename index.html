@@ -351,7 +351,7 @@
   <p class="page-sub">bad photos. no editing. no curation. scroll sideways.</p>
   <div class="film-strip" id="fstrip"></div>
   <div class="blog-bar">
-    <label for="bfile" id="photo-label">+ photo</label>
+    <label id="photo-label" onclick="promptUploadAuth(event)">+ photo</label>
     <span id="photo-ready">— loaded</span>
     <input type="file" id="bfile" accept="image/*" hidden>
     <input type="text" id="bcap" placeholder="caption (optional)">
@@ -914,6 +914,36 @@ async function confirmDeleteBlog(id) {
   await fetch(`/api/posts/${id}`, { method: 'DELETE', headers: { 'X-Auth': 'bingotown' } });
   posts = posts.filter(p => p.id !== id);
   renderBlog();
+}
+
+function promptUploadAuth(e) {
+  e.preventDefault();
+  playClick();
+  const m = document.getElementById('mcontent');
+  m.innerHTML = `<h3>verify</h3>
+    <input type="password" id="up-pw1" placeholder="first" autocomplete="off" style="margin-bottom:8px">
+    <input type="password" id="up-pw2" placeholder="second" autocomplete="off">
+    <div style="font-size:10px;color:var(--accent);letter-spacing:.1em;margin:6px 0 8px;opacity:0;transition:opacity .2s" id="up-err">wrong.</div>
+    <button class="btn" onclick="confirmUploadAuth()">continue</button>`;
+  document.getElementById('moverlay').classList.add('active');
+  setTimeout(() => { const f = document.getElementById('up-pw1'); if (f) f.focus(); }, 50);
+  document.getElementById('up-pw2').addEventListener('keydown', e => { if (e.key === 'Enter') confirmUploadAuth(); });
+}
+
+function confirmUploadAuth() {
+  const pw1 = document.getElementById('up-pw1');
+  const pw2 = document.getElementById('up-pw2');
+  if (!pw1 || !pw2) return;
+  if (pw1.value === 'jo' && pw2.value === 'mama') {
+    closeModal(null, 1);
+    document.getElementById('bfile').click();
+  } else {
+    pw1.value = ''; pw2.value = '';
+    const err = document.getElementById('up-err');
+    err.style.opacity = '1';
+    setTimeout(() => err.style.opacity = '0', 1500);
+    pw1.focus();
+  }
 }
 
 async function postPhoto() {
