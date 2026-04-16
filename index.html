@@ -204,6 +204,17 @@
   .easter-egg{position:fixed;inset:0;background:var(--fg);color:var(--bg);display:none;align-items:center;justify-content:center;z-index:5000;font-family:var(--serif);font-size:28px;font-style:italic;text-align:center;padding:30px;line-height:1.5;cursor:crosshair}
   .easter-egg.active{display:flex}
 
+  /* GAME GATE */
+  #game-gate{position:fixed;inset:0;background:var(--bg);z-index:9002;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px}
+  #game-top{display:flex;flex-direction:column;align-items:center;gap:10px}
+  #game-status{font-size:11px;color:var(--fg);letter-spacing:.25em;min-height:14px;transition:opacity .25s}
+  #game-round{font-size:9px;color:var(--faint);letter-spacing:.2em}
+  #game-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+  .gdot{width:7px;height:7px;border-radius:50%;background:var(--faint);transition:background .1s,transform .1s;cursor:crosshair}
+  .gdot.lit{background:var(--fg);transform:scale(2)}
+  .gdot.hit{background:var(--accent);transform:scale(1.8)}
+  #game-msg{font-size:9px;color:var(--accent);letter-spacing:.2em;height:12px;opacity:0;transition:opacity .15s}
+
   /* PASSWORD GATE */
   #pw-gate{position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
   #pw-gate input{border:none;border-bottom:1px solid var(--faint);background:transparent;font-family:var(--mono);font-size:13px;letter-spacing:.15em;outline:none;padding:8px 0;text-align:center;width:180px;color:var(--fg);transition:border-color .2s}
@@ -223,6 +234,16 @@
 </style>
 </head>
 <body>
+
+<!-- GAME GATE -->
+<div id="game-gate">
+  <div id="game-top">
+    <div id="game-status"></div>
+    <div id="game-round"></div>
+  </div>
+  <div id="game-grid"></div>
+  <div id="game-msg"></div>
+</div>
 
 <!-- PASSWORD GATE -->
 <div id="pw-gate">
@@ -368,6 +389,115 @@
 <div class="easter-egg" id="egg" onclick="this.classList.remove('active')">you found nothing.<br>congratulations.</div>
 
 <script>
+// ── GAME GATE
+(function() {
+  if (sessionStorage.getItem('auth') === '1') return;
+
+  // Hide pw-gate until game is cleared
+  document.getElementById('pw-gate').style.display = 'none';
+
+  const TOTAL = 16;
+  const rounds = [
+    { n: 4, speed: 780 },
+    { n: 5, speed: 650 },
+    { n: 6, speed: 520 },
+  ];
+  let roundIdx = 0, seq = [], userSeq = [], accepting = false;
+
+  const gate     = document.getElementById('game-gate');
+  const gridEl   = document.getElementById('game-grid');
+  const statusEl = document.getElementById('game-status');
+  const roundEl  = document.getElementById('game-round');
+  const msgEl    = document.getElementById('game-msg');
+
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'gdot';
+    d.addEventListener('click', () => handleClick(i));
+    gridEl.appendChild(d);
+  }
+
+  const dot = i => gridEl.children[i];
+
+  function setStatus(txt) {
+    statusEl.style.opacity = '0';
+    setTimeout(() => { statusEl.textContent = txt; statusEl.style.opacity = '1'; }, 160);
+  }
+
+  function showMsg(txt, dur = 1000) {
+    msgEl.textContent = txt;
+    msgEl.style.opacity = '1';
+    clearTimeout(msgEl._t);
+    if (dur) msgEl._t = setTimeout(() => msgEl.style.opacity = '0', dur);
+  }
+
+  function startRound() {
+    accepting = false;
+    userSeq = [];
+    const { n, speed } = rounds[roundIdx];
+    roundEl.textContent = `[ ${String(roundIdx + 1).padStart(2,'0')} / 03 ]`;
+    setStatus('—');
+
+    const pool = Array.from({length: TOTAL}, (_, i) => i);
+    seq = [];
+    for (let i = 0; i < n; i++) {
+      const j = Math.floor(Math.random() * pool.length);
+      seq.push(pool.splice(j, 1)[0]);
+    }
+
+    setTimeout(() => playSeq(speed), 700);
+  }
+
+  function playSeq(speed) {
+    let i = 0;
+    const step = () => {
+      if (i > 0) dot(seq[i - 1]).classList.remove('lit');
+      if (i >= seq.length) { setStatus('·'); accepting = true; return; }
+      dot(seq[i]).classList.add('lit');
+      i++;
+      setTimeout(step, speed);
+    };
+    step();
+  }
+
+  function handleClick(i) {
+    if (!accepting) return;
+    dot(i).classList.add('hit');
+    setTimeout(() => dot(i).classList.remove('hit'), 220);
+
+    if (i === seq[userSeq.length]) {
+      userSeq.push(i);
+      if (userSeq.length === seq.length) {
+        accepting = false;
+        if (roundIdx < rounds.length - 1) {
+          roundIdx++;
+          setStatus('—');
+          setTimeout(startRound, 800);
+        } else {
+          setStatus('.');
+          roundEl.style.opacity = '0';
+          setTimeout(() => {
+            gate.style.opacity = '0';
+            gate.style.transition = 'opacity .35s';
+            setTimeout(() => {
+              gate.style.display = 'none';
+              const pwGate = document.getElementById('pw-gate');
+              pwGate.style.display = 'flex';
+              document.getElementById('pw-input').focus();
+            }, 350);
+          }, 600);
+        }
+      }
+    } else {
+      accepting = false;
+      showMsg('error.');
+      setTimeout(startRound, 1100);
+    }
+  }
+
+  startRound();
+})();
+
 // ── PASSWORD GATE
 (function() {
   const gate = document.getElementById('pw-gate');
