@@ -477,12 +477,13 @@
           setStatus('.');
           roundEl.style.opacity = '0';
           setTimeout(() => {
+            // Reveal pw-gate first (behind game gate) so nothing shows through during fade
+            const pwGate = document.getElementById('pw-gate');
+            pwGate.style.display = 'flex';
             gate.style.opacity = '0';
             gate.style.transition = 'opacity .35s';
             setTimeout(() => {
               gate.style.display = 'none';
-              const pwGate = document.getElementById('pw-gate');
-              pwGate.style.display = 'flex';
               document.getElementById('pw-input').focus();
             }, 350);
           }, 600);
