@@ -205,15 +205,34 @@
   .easter-egg.active{display:flex}
 
   /* GAME GATE */
-  #game-gate{position:fixed;inset:0;background:var(--bg);z-index:9002;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px}
+  #game-gate{position:fixed;inset:0;background:var(--bg);z-index:9002;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;overflow-y:auto;padding:40px 20px}
   #game-top{display:flex;flex-direction:column;align-items:center;gap:10px}
   #game-status{font-size:11px;color:var(--fg);letter-spacing:.25em;min-height:14px;transition:opacity .25s}
   #game-round{font-size:9px;color:var(--faint);letter-spacing:.2em}
-  #game-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+  #game-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;transition:opacity .25s}
   .gdot{width:7px;height:7px;border-radius:50%;background:var(--faint);transition:background .1s,transform .1s;cursor:crosshair}
   .gdot.lit{background:var(--fg);transform:scale(2)}
   .gdot.hit{background:var(--accent);transform:scale(1.8)}
   #game-msg{font-size:9px;color:var(--accent);letter-spacing:.2em;height:12px;opacity:0;transition:opacity .15s}
+  #game-enter{font-size:10px;letter-spacing:.25em;opacity:0;transition:opacity .5s;min-height:14px;pointer-events:none}
+  #game-enter.visible{opacity:1;pointer-events:auto}
+  #game-enter a{color:var(--fg);cursor:crosshair;border-bottom:1px solid var(--faint);padding-bottom:2px;transition:border-color .2s;text-decoration:none}
+  #game-enter a:hover{border-color:var(--fg)}
+  #game-leaderboard{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--muted);min-width:180px;line-height:1.9;min-height:20px}
+  #game-leaderboard .lb-title{color:var(--faint);font-size:8px;letter-spacing:.35em;margin-bottom:8px;text-align:center}
+  #game-leaderboard .lb-row{display:flex;justify-content:space-between;gap:24px}
+  #game-leaderboard .lb-rank{color:var(--faint)}
+  #game-leaderboard .lb-name{color:var(--fg);margin-left:6px}
+  #game-leaderboard .lb-level{color:var(--fg)}
+  #game-over{display:none;flex-direction:column;align-items:center;gap:14px;font-size:10px;letter-spacing:.15em;color:var(--fg)}
+  #game-over.visible{display:flex}
+  #game-over-msg{font-size:11px;letter-spacing:.3em;color:var(--fg)}
+  #game-name{border:none;border-bottom:1px solid var(--faint);background:transparent;font-family:var(--mono);font-size:14px;letter-spacing:.45em;outline:none;padding:6px 0 6px 10px;text-align:center;width:110px;color:var(--fg);text-transform:uppercase}
+  #game-name:focus{border-color:var(--fg)}
+  #game-name::placeholder{color:var(--faint);letter-spacing:.3em}
+  #game-over-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+  #game-over button{background:transparent;border:1px solid var(--faint);color:var(--fg);padding:7px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.2em;cursor:crosshair;transition:border-color .2s}
+  #game-over button:hover{border-color:var(--fg)}
 
   /* PASSWORD GATE */
   #pw-gate{position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
@@ -243,6 +262,17 @@
   </div>
   <div id="game-grid"></div>
   <div id="game-msg"></div>
+  <div id="game-enter"><a id="game-enter-btn">enter →</a></div>
+  <div id="game-over">
+    <div id="game-over-msg"></div>
+    <input id="game-name" maxlength="3" placeholder="___" autocomplete="off" spellcheck="false">
+    <div id="game-over-actions">
+      <button id="game-submit">submit</button>
+      <button id="game-again">again</button>
+      <button id="game-over-enter" style="display:none">enter →</button>
+    </div>
+  </div>
+  <div id="game-leaderboard"></div>
 </div>
 
 <!-- PASSWORD GATE -->
@@ -397,18 +427,31 @@
   document.getElementById('pw-gate').style.display = 'none';
 
   const TOTAL = 16;
-  const rounds = [
-    { n: 4, speed: 780 },
-    { n: 5, speed: 650 },
-    { n: 6, speed: 520 },
-  ];
-  let roundIdx = 0, seq = [], userSeq = [], accepting = false;
+  const ENTER_LEVEL = 4;
+  let level = 1, seq = [], userSeq = [], accepting = false;
 
-  const gate     = document.getElementById('game-gate');
-  const gridEl   = document.getElementById('game-grid');
-  const statusEl = document.getElementById('game-status');
-  const roundEl  = document.getElementById('game-round');
-  const msgEl    = document.getElementById('game-msg');
+  const gate      = document.getElementById('game-gate');
+  const gridEl    = document.getElementById('game-grid');
+  const statusEl  = document.getElementById('game-status');
+  const roundEl   = document.getElementById('game-round');
+  const msgEl     = document.getElementById('game-msg');
+  const enterBox  = document.getElementById('game-enter');
+  const enterBtn  = document.getElementById('game-enter-btn');
+  const lbEl      = document.getElementById('game-leaderboard');
+  const overEl    = document.getElementById('game-over');
+  const overMsg   = document.getElementById('game-over-msg');
+  const nameInp   = document.getElementById('game-name');
+  const submitBtn = document.getElementById('game-submit');
+  const againBtn  = document.getElementById('game-again');
+  const overEnter = document.getElementById('game-over-enter');
+
+  // Sequence length grows by 1 per level (capped at 12); speed tightens to 180ms min.
+  function difficulty(lvl) {
+    return {
+      n: Math.min(12, 3 + lvl),
+      speed: Math.max(180, 800 - lvl * 70)
+    };
+  }
 
   for (let i = 0; i < TOTAL; i++) {
     const d = document.createElement('div');
@@ -434,9 +477,13 @@
   function startRound() {
     accepting = false;
     userSeq = [];
-    const { n, speed } = rounds[roundIdx];
-    roundEl.textContent = `[ ${String(roundIdx + 1).padStart(2,'0')} / 03 ]`;
+    overEl.classList.remove('visible');
+    gridEl.style.opacity = '1';
+    const { n, speed } = difficulty(level);
+    roundEl.textContent = `[ level ${String(level).padStart(2,'0')} ]`;
     setStatus('—');
+
+    if (level >= ENTER_LEVEL) enterBox.classList.add('visible');
 
     const pool = Array.from({length: TOTAL}, (_, i) => i);
     seq = [];
@@ -469,32 +516,86 @@
       userSeq.push(i);
       if (userSeq.length === seq.length) {
         accepting = false;
-        if (roundIdx < rounds.length - 1) {
-          roundIdx++;
-          setStatus('—');
-          setTimeout(startRound, 800);
-        } else {
-          setStatus('.');
-          roundEl.style.opacity = '0';
-          setTimeout(() => {
-            // Reveal pw-gate first (behind game gate) so nothing shows through during fade
-            const pwGate = document.getElementById('pw-gate');
-            pwGate.style.display = 'flex';
-            gate.style.opacity = '0';
-            gate.style.transition = 'opacity .35s';
-            setTimeout(() => {
-              gate.style.display = 'none';
-              document.getElementById('pw-input').focus();
-            }, 350);
-          }, 600);
-        }
+        level++;
+        setStatus('·');
+        setTimeout(startRound, 800);
       }
     } else {
       accepting = false;
       showMsg('error.');
-      setTimeout(startRound, 1100);
+      gameOver();
     }
   }
+
+  function gameOver() {
+    const completed = level - 1;
+    gridEl.style.opacity = '.25';
+    enterBox.classList.remove('visible');
+    overEl.classList.add('visible');
+    overMsg.textContent = completed > 0 ? `score: ${completed}` : 'failed level 01';
+    nameInp.value = '';
+    nameInp.dataset.score = completed;
+    const canSubmit = completed > 0;
+    nameInp.style.display = canSubmit ? '' : 'none';
+    submitBtn.style.display = canSubmit ? '' : 'none';
+    overEnter.style.display = (completed >= ENTER_LEVEL - 1) ? '' : 'none';
+    if (canSubmit) nameInp.focus();
+  }
+
+  enterBtn.addEventListener('click', revealPwGate);
+  overEnter.addEventListener('click', revealPwGate);
+
+  function revealPwGate() {
+    const pwGate = document.getElementById('pw-gate');
+    pwGate.style.display = 'flex';
+    gate.style.opacity = '0';
+    gate.style.transition = 'opacity .35s';
+    setTimeout(() => {
+      gate.style.display = 'none';
+      document.getElementById('pw-input').focus();
+    }, 350);
+  }
+
+  async function submitScore() {
+    const score = parseInt(nameInp.dataset.score, 10) || 0;
+    const name = (nameInp.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
+    if (!name || score < 1) { nameInp.focus(); return; }
+    submitBtn.disabled = true;
+    try {
+      const r = await fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, level: score })
+      });
+      if (r.ok) renderLeaderboard(await r.json());
+    } catch {}
+    submitBtn.disabled = false;
+    nameInp.style.display = 'none';
+    submitBtn.style.display = 'none';
+  }
+
+  function playAgain() {
+    level = 1;
+    startRound();
+  }
+
+  submitBtn.addEventListener('click', submitScore);
+  againBtn.addEventListener('click', playAgain);
+  nameInp.addEventListener('keydown', e => { if (e.key === 'Enter') submitScore(); });
+
+  function renderLeaderboard(board) {
+    if (!board || !board.length) { lbEl.innerHTML = ''; return; }
+    const rows = board.slice(0, 10).map((e, i) => {
+      const rank = String(i + 1).padStart(2, '0');
+      return `<div class="lb-row"><span><span class="lb-rank">${rank}</span><span class="lb-name">${e.name}</span></span><span class="lb-level">${e.level}</span></div>`;
+    }).join('');
+    lbEl.innerHTML = `<div class="lb-title">top scores</div>${rows}`;
+  }
+
+  fetch('/api/leaderboard')
+    .then(r => r.ok ? r.json() : [])
+    .then(renderLeaderboard)
+    .catch(() => {});
 
   startRound();
 })();
