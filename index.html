@@ -428,7 +428,7 @@
 
   document.getElementById('pw-gate').style.display = 'none';
 
-  const TOTAL = 64, COLS = 8;
+  const TOTAL = 25, COLS = 5;
   const ENTER_LEVEL = 4;
   let level = 1, seq = [], userSeq = [], accepting = false;
 
@@ -508,7 +508,7 @@
         const p = Math.max(0, 1 - errAge / 0.6);
         armLen      = restArm + (litArm - restArm) * p;
         strokeW     = 0.75 + p * 1.25;
-        strokeAlpha = 0.14 + p * 0.72;
+        strokeAlpha = 0.38 + p * 0.52;
         strokeR = 181; strokeG = 51; strokeB = 46;
       } else if (c.lit) {
         armLen      = litArm;
@@ -518,11 +518,11 @@
         const p = Math.max(0, 1 - litAge / 0.4);
         armLen      = restArm + (litArm - restArm) * p;
         strokeW     = 0.75 + p * 0.75;
-        strokeAlpha = 0.14 + p * 0.76;
+        strokeAlpha = 0.38 + p * 0.52;
       } else {
         armLen      = restArm;
         strokeW     = 0.75;
-        strokeAlpha = 0.14;
+        strokeAlpha = 0.38;
       }
 
       // draw cross
