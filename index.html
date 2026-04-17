@@ -460,10 +460,14 @@
     lit: false, litT: -99, hitT: -99, errorT: -99,
   }));
 
+  let hoveredCell = -1;
+
   for (let i = 0; i < TOTAL; i++) {
     const div = document.createElement('div');
     div.className = 'gcell';
     div.addEventListener('pointerdown', e => { e.preventDefault(); handleClick(i); }, { passive: false });
+    div.addEventListener('pointerenter', () => { hoveredCell = i; });
+    div.addEventListener('pointerleave', () => { if (hoveredCell === i) hoveredCell = -1; });
     overlay.appendChild(div);
   }
 
@@ -519,10 +523,20 @@
         armLen      = restArm + (litArm - restArm) * p;
         strokeW     = 0.75 + p * 0.75;
         strokeAlpha = 0.38 + p * 0.52;
+      } else if (i === hoveredCell && accepting) {
+        armLen      = restArm + (litArm - restArm) * 0.3;
+        strokeW     = 1.0;
+        strokeAlpha = 0.58;
       } else {
         armLen      = restArm;
         strokeW     = 0.75;
         strokeAlpha = 0.38;
+      }
+
+      // faint cell fill on hover
+      if (i === hoveredCell && accepting) {
+        ctx.fillStyle = 'rgba(17,17,17,0.045)';
+        ctx.fillRect(c.col * cellW, c.row * cellH, cellW, cellH);
       }
 
       // draw cross
