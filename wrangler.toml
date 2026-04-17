@@ -1,0 +1,6 @@
+name = "my-site"
+pages_build_output_dir = "."
+
+[[kv_namespaces]]
+binding = "POSTS"
+id = "a64f2aecb5644ad2b8e090af332b14df"
